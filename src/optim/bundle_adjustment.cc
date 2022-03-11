@@ -281,7 +281,19 @@ bool BundleAdjuster::Solve(Reconstruction* reconstruction) {
               << Median(vini_err) << " / " << Mean(vini_err) << " / "
               << StdDev(vini_err) << "\n";
 
-    if (src.size() > 3) {
+    // If all entries in dst are the same, the robust alignment is degenerate
+    // and will result in a runtime error, so this should be checked and
+    // included in the next if condition.
+    bool dst_diff = false;
+    for (const Eigen::Vector3d& vec1 : dst) {
+      for (const Eigen::Vector3d& vec2 : dst) {
+        if (!vec1.isApprox(vec2)) {
+          dst_diff = true;
+        }
+      }
+    }
+
+    if (src.size() > 3 && dst_diff) {
       SimilarityTransform3 tform;
       // bool success = reconstruction->Align(src, dst, &tform);
       RANSACOptions ransac;

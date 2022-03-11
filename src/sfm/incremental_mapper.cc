@@ -238,10 +238,23 @@ std::vector<image_t> IncrementalMapper::FindNextImages(const Options& options) {
       continue;
     }
 
+    // Check if image has the same prior position as all other already
+    // registered images.
+    bool same_prior_position = true;
+    for (unsigned int reg_image_id : reconstruction_->RegImageIds()) {
+      if (!image.second.TvecPrior().isApprox(
+              reconstruction_->Image(reg_image_id).TvecPrior())) {
+        same_prior_position = false;
+      }
+    }
+
     // If image has been filtered or failed to register, place it in the
     // second bucket and prefer images that have not been tried before.
+    // Also put it in the second bucket if it has the same prior position
+    // as the all the already registered images.
     const float rank = rank_image_func(image.second);
-    if (filtered_images_.count(image.first) == 0 && num_reg_trials == 0) {
+    if (filtered_images_.count(image.first) == 0 && num_reg_trials == 0
+        && !same_prior_position) {
       image_ranks.emplace_back(image.first, rank);
     } else {
       other_image_ranks.emplace_back(image.first, rank);
