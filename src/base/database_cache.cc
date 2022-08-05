@@ -203,6 +203,27 @@ void DatabaseCache::Load(const Database& database, const size_t min_num_matches,
             << std::endl;
 }
 
+void DatabaseCache::Load_Images(const Database& database, const std::vector<image_t>& image_ids) {
+
+  {
+    const std::vector<class Image> images = database.ReadAllImages();
+
+    // Load images with correspondences and discard images without
+    // correspondences, as those images are useless for SfM.
+    images_.reserve(image_ids.size());
+    for (const auto& image : images) {
+      if (std::count(image_ids.begin(), image_ids.end(), image.ImageId()) > 0) {
+        images_.emplace(image.ImageId(), image);
+        const FeatureKeypoints keypoints =
+            database.ReadKeypoints(image.ImageId());
+        const std::vector<Eigen::Vector2d> points =
+            FeatureKeypointsToPointsVector(keypoints);
+        images_[image.ImageId()].SetPoints2D(points);
+      }
+    }
+  }
+}
+
 const class Image* DatabaseCache::FindImageWithName(
     const std::string& name) const {
   for (const auto& image : images_) {

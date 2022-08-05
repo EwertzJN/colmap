@@ -33,6 +33,7 @@
 
 #include <ceres/ceres.h>
 
+#include "base/gps.h"
 #include "optim/bundle_adjustment.h"
 #include "util/misc.h"
 
@@ -66,6 +67,95 @@ BundleAdjustmentController::BundleAdjustmentController(
     const OptionManager& options, Reconstruction* reconstruction)
     : options_(options), reconstruction_(reconstruction) {}
 
+bool BundleAdjustmentController::SetUpPriorMotions() {
+
+  PrintHeading1("Loading database");
+
+  std::string database_path = options_.bundle_adjustment->database_path;
+  Database database(database_path);
+  Timer timer;
+  timer.Start();
+  database_cache_.Load_Images(database,reconstruction_->RegImageIds());
+  std::cout << std::endl;
+  timer.PrintMinutes();
+
+  std::cout << std::endl;
+
+  if (database_cache_.NumImages() == 0) {
+    std::cout << "WARNING: No images found in the database."
+              << std::endl
+              << std::endl;
+    return false;
+  }
+
+  GPSTransform gps_transform(GPSTransform::WGS84);
+  size_t nb_motion_prior = 0;
+
+  std::cout << "\nSetting Up Prior Motions!\n";
+
+  // GPS to ENU conversion
+  if (options_.bundle_adjustment->prior_is_gps && options_.bundle_adjustment->use_enu_coords) {
+    // Get image ids to get ordered GPS prior coords.
+    std::set<image_t> image_prior_ids;
+
+    for (const auto& image : database_cache_.Images()) {
+      if (image.second.HasTvecPrior()) {
+        image_prior_ids.insert(image.first);
+        ++nb_motion_prior;
+      }
+    }
+
+    // Get ordered GPS prior coords.
+    std::vector<Eigen::Vector3d> vgps_priors;
+    vgps_priors.reserve(database_cache_.NumImages());
+
+    for (const auto image_id : image_prior_ids) {
+      vgps_priors.push_back(database_cache_.Image(image_id).TvecPrior());
+    }
+
+    // Convert to GPS to ENU coords.
+    std::vector<Eigen::Vector3d> vtvec_priors =
+        gps_transform.EllToENU(vgps_priors);
+
+    // Set back the prior coords.
+    size_t k = 0;
+    for (const auto image_id : image_prior_ids) {
+      database_cache_.Image(image_id).SetTvecPrior(vtvec_priors[k]);
+      k++;
+    }
+  } else {
+    for (auto& image : database_cache_.Images()) {
+      if (image.second.HasTvecPrior()) {
+        if (options_.bundle_adjustment->prior_is_gps) {
+          // GPS to ECEF conversion
+          database_cache_.Image(image.first)
+              .SetTvecPrior(
+                  gps_transform.EllToXYZ({image.second.TvecPrior()})[0]);
+        }
+        ++nb_motion_prior;
+      }
+    }
+  }
+
+  if (nb_motion_prior < database_cache_.NumImages()) {
+    std::cout << "WARNING! Not all images have a motion prior!\n";
+
+    if (nb_motion_prior < 3) {
+      std::cout << StringPrintf(
+          "Only %d motion priors! Cannot optimize with use_motion_prior "
+          "checked...",
+          nb_motion_prior);
+      return false;
+    }
+  }
+
+  for (auto &&image_id : reconstruction_->RegImageIds()) {
+    reconstruction_->Image(image_id).SetTvecPrior(database_cache_.Image(image_id).TvecPrior());
+  }
+
+  return true;
+}
+
 void BundleAdjustmentController::Run() {
   CHECK_NOTNULL(reconstruction_);
 
@@ -76,6 +166,13 @@ void BundleAdjustmentController::Run() {
   if (reg_image_ids.size() < 2) {
     std::cout << "ERROR: Need at least two views." << std::endl;
     return;
+  }
+
+  if (options_.bundle_adjustment->use_prior_motion) {
+    std::cout << "\nSETTING UP PRIOR MOTION!";
+    if (!SetUpPriorMotions()) {
+      return;
+    }
   }
 
   // Avoid degeneracies in bundle adjustment.

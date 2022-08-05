@@ -32,6 +32,7 @@
 #ifndef COLMAP_SRC_CONTROLLERS_BUNDLE_ADJUSTMENT_H_
 #define COLMAP_SRC_CONTROLLERS_BUNDLE_ADJUSTMENT_H_
 
+#include "base/database_cache.h"
 #include "base/reconstruction.h"
 #include "util/option_manager.h"
 #include "util/threading.h"
@@ -49,6 +50,8 @@ class BundleAdjustmentController : public Thread {
 
   const OptionManager options_;
   Reconstruction* reconstruction_;
+  DatabaseCache database_cache_;
+  bool SetUpPriorMotions();
 };
 
 }  // namespace colmap

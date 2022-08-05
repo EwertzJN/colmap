@@ -467,6 +467,20 @@ void OptionManager::AddBundleAdjustmentOptions() {
                               &bundle_adjustment->refine_extra_params);
   AddAndRegisterDefaultOption("BundleAdjustment.refine_extrinsics",
                               &bundle_adjustment->refine_extrinsics);
+  AddAndRegisterDefaultOption("BundleAdjustment.use_prior_motion",
+                              &bundle_adjustment->use_prior_motion);
+  AddAndRegisterDefaultOption("BundleAdjustment.prior_is_gps",
+                              &bundle_adjustment->prior_is_gps);
+  AddAndRegisterDefaultOption("BundleAdjustment.use_enu_coords",
+                              &bundle_adjustment->use_enu_coords);
+  AddAndRegisterDefaultOption("BundleAdjustment.prior_std_x",
+                              &bundle_adjustment->motion_prior_xyz_std(0));
+  AddAndRegisterDefaultOption("BundleAdjustment.prior_std_y",
+                              &bundle_adjustment->motion_prior_xyz_std(1));
+  AddAndRegisterDefaultOption("BundleAdjustment.prior_std_z",
+                              &bundle_adjustment->motion_prior_xyz_std(2));
+  AddAndRegisterDefaultOption("BundleAdjustment.database_path",
+                              &bundle_adjustment->database_path);
 }
 
 void OptionManager::AddMapperOptions() {

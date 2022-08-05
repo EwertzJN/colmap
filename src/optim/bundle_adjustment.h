@@ -74,6 +74,9 @@ struct BundleAdjustmentOptions {
   Eigen::Vector3d motion_prior_xyz_std = Eigen::Vector3d::Ones();
   bool use_robust_loss_on_prior = false;
   double prior_loss_scale = 7.815;
+  bool prior_is_gps = false;
+  bool use_enu_coords = false;
+  std::string database_path;
 
   // Minimum number of residuals to enable multi-threading. Note that
   // single-threaded is typically better for small bundle adjustment problems

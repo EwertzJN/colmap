@@ -95,6 +95,9 @@ class DatabaseCache {
   // Find specific image by name. Note that this uses linear search.
   const class Image* FindImageWithName(const std::string& name) const;
 
+  void Load_Images(const Database& database,
+                   const std::vector<image_t>& image_ids);
+
  private:
   class CorrespondenceGraph correspondence_graph_;
 
